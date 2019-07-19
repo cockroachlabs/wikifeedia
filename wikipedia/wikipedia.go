@@ -47,6 +47,7 @@ type TopPageviewsArticle struct {
 }
 
 type Article struct {
+	Article string
 	Summary ArticleSummary
 	Media   []ArticleMediaItem
 }
@@ -72,16 +73,26 @@ type ImageMetadata struct {
 	Mime   string `json:"mime"`
 }
 
+type ContentURLs struct {
+	Desktop ArticleURLs `json:"desktop"`
+	Mobile  ArticleURLs `json:"mobile"`
+}
+
+type ArticleURLs struct {
+	Page string `json:"page"`
+}
+
 type ArticleSummary struct {
 	Type         string `json:"type"`
 	Title        string `json:"title"`
 	DisplayTitle string `json:"display_title"`
 	Titles       ArticleTitles
-	WikibaseItem string    `json:"wikibase_item"`
-	Lang         string    `json:"lang"`
-	Timestamp    time.Time `json:"time"`
-	Extract      string    `json:"extract"`
-	ExtractHTML  string    `json:"extract_html"`
+	WikibaseItem string      `json:"wikibase_item"`
+	Lang         string      `json:"lang"`
+	Timestamp    time.Time   `json:"time"`
+	Extract      string      `json:"extract"`
+	ExtractHTML  string      `json:"extract_html"`
+	ContentURLs  ContentURLs `json:"content_urls"`
 }
 
 func (c *Client) GetArticle(ctx context.Context, articleName string) (Article, error) {
@@ -94,6 +105,7 @@ func (c *Client) GetArticle(ctx context.Context, articleName string) (Article, e
 		return Article{}, err
 	}
 	return Article{
+		Article: articleName,
 		Summary: summary,
 		Media:   media,
 	}, nil

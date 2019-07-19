@@ -2,22 +2,34 @@
 package db
 
 import (
+	"context"
+
 	"github.com/jackc/pgx"
 )
 
 const (
-	databaseName  = "wikifeedia"
-	articlesTable = `CREATE TABLE IF NOT EXISTS wikifeedia.articles (
-		project STRING,
+	DatabaseName  = "wikifeedia"
+	articlesTable = `CREATE TABLE IF NOT EXISTS articles (
 		article STRING,
+		title STRING,
+		thumbnail_url STRING,
 		image_url STRING,
-		summary STRING,
-		monthly_views INT,
+		abstract STRING,
+		article_url STRING,
 		daily_views INT,
-		hotness FLOAT8,
-		PRIMARY KEY (project, article)
+		PRIMARY KEY (article)
 	);`
 )
+
+type Article struct {
+	Article      string `json:"article"`
+	Title        string `json:"title"`
+	ThumbnailURL string `json:"thumbnail_url"`
+	Abstract     string `json:"abstract"`
+	ImageURL     string `json:"image_url"`
+	ArticleURL   string `json:"article_url"`
+	DailyViews   int    `json:"daily_views"`
+}
 
 // DB is a wrapper around a pgx.ConnPool that knows about the structure of our application schema.
 type DB struct {
@@ -34,6 +46,7 @@ func New(pgurl string) (*DB, error) {
 	if err != nil {
 		return nil, err
 	}
+	conf.Database = DatabaseName
 	poolConf := pgx.ConnPoolConfig{
 		ConnConfig:     conf,
 		MaxConnections: MaxConnections,
@@ -52,8 +65,60 @@ func New(pgurl string) (*DB, error) {
 	return db, nil
 }
 
+func (db *DB) GetAllArticles(ctx context.Context) ([]Article, error) {
+	rows, err := db.connPool.QueryEx(ctx, `SELECT
+		article,
+		title,
+		thumbnail_url,
+		image_url,
+		abstract,
+		article_url,
+		daily_views
+	FROM articles ORDER BY daily_views DESC`, nil)
+	if err != nil {
+		return nil, err
+	}
+	var results []Article
+	var a Article
+	for rows.Next() {
+		if err := rows.Scan(&a.Article, &a.Title,
+			&a.ThumbnailURL, &a.ImageURL, &a.Abstract,
+			&a.ArticleURL, &a.DailyViews); err != nil {
+			return nil, err
+		}
+		results = append(results, a)
+	}
+	return results, nil
+}
+
+func (db *DB) UpsertArticle(ctx context.Context, a Article) error {
+	_, err := db.connPool.ExecEx(ctx, `INSERT
+	INTO
+		articles
+			(
+				article,
+				title,
+				thumbnail_url,
+				image_url,
+				abstract,
+				article_url,
+				daily_views
+			)
+	VALUES
+		($1, $2, $3, $4, $5, $6, $7)`,
+		nil,
+		a.Article,
+		a.Title,
+		a.ThumbnailURL,
+		a.ImageURL,
+		a.Abstract,
+		a.ArticleURL,
+		a.DailyViews)
+	return err
+}
+
 func setupDatabase(db *DB) error {
-	if _, err := db.connPool.Exec("CREATE DATABASE IF NOT EXISTS " + databaseName); err != nil {
+	if _, err := db.connPool.Exec("CREATE DATABASE IF NOT EXISTS " + DatabaseName); err != nil {
 		return err
 	}
 	_, err := db.connPool.Exec(articlesTable)

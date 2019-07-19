@@ -4,9 +4,13 @@ package main
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"os"
+	"strconv"
 
+	"github.com/awoods187/wikifeedia/crawler"
 	"github.com/awoods187/wikifeedia/db"
+	"github.com/awoods187/wikifeedia/server"
 	"github.com/awoods187/wikifeedia/wikipedia"
 	"github.com/urfave/cli"
 )
@@ -33,6 +37,42 @@ func main() {
 				fmt.Println("Setting up database at", pgurl)
 				_, err := db.New(pgurl)
 				return err
+			},
+		},
+		{
+			Name:        "crawl",
+			Description: "Update the set of articles one time",
+			Action: func(c *cli.Context) error {
+				pgurl := c.GlobalString("pgurl")
+				fmt.Println("Setting up database at", pgurl)
+				conn, err := db.New(pgurl)
+				if err != nil {
+					return err
+				}
+				wiki := wikipedia.New()
+				crawl := crawler.New(conn, wiki)
+				return crawl.CrawlOnce(context.Background())
+			},
+		},
+		{
+			Name:        "server",
+			Description: "Run the server",
+			Action: func(c *cli.Context) error {
+				pgurl := c.GlobalString("pgurl")
+				fmt.Println("Setting up database at", pgurl)
+				conn, err := db.New(pgurl)
+				if err != nil {
+					return err
+				}
+				s := server.New(conn)
+				return http.ListenAndServe(":"+strconv.Itoa(c.Int("port")), s)
+			},
+			Flags: []cli.Flag{
+				cli.IntFlag{
+					Name:  "port",
+					Value: 8080,
+					Usage: "port on which to serve",
+				},
 			},
 		},
 		{
