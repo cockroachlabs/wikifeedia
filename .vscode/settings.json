@@ -1,4 +1,6 @@
 {
     "go.inferGopath": true,
-    "go.gopath": ""
+    "go.gopath": "",
+    "go.useLanguageServer": true,
+    "go.formatTool": "crlfmt"
 }

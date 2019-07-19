@@ -2,10 +2,12 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 
 	"github.com/awoods187/wikifeedia/db"
+	"github.com/awoods187/wikifeedia/wikipedia"
 	"github.com/urfave/cli"
 )
 
@@ -31,6 +33,37 @@ func main() {
 				fmt.Println("Setting up database at", pgurl)
 				_, err := db.New(pgurl)
 				return err
+			},
+		},
+		{
+			Name:        "fetch-top-articles",
+			Description: "debug command to exercise the wikipedia client functionality.",
+			Action: func(c *cli.Context) error {
+				ctx := context.Background()
+				wiki := wikipedia.New()
+				top, err := wiki.FetchTopArticles(ctx)
+				if err != nil {
+					return err
+				}
+				n := c.Int("num-articles")
+				for i := 0; i < len(top.Articles) && i < n; i++ {
+					article, err := wiki.GetArticle(ctx, top.Articles[i].Article)
+					if err != nil {
+						return err
+					}
+					if i > 0 {
+						fmt.Println()
+					}
+					fmt.Printf("%d. %s (%d)\n\n%s\n", i+1, article.Summary.Titles.Normalized, top.Articles[i].Views, article.Summary.Extract)
+				}
+				return nil
+			},
+			Flags: []cli.Flag{
+				cli.IntFlag{
+					Name:  "num-articles,n",
+					Value: 10,
+					Usage: "number of articles to fetch",
+				},
 			},
 		},
 	}
