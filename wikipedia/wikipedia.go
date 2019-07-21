@@ -96,6 +96,7 @@ type ArticleSummary struct {
 }
 
 func (c *Client) GetArticle(ctx context.Context, articleName string) (Article, error) {
+	fmt.Println(articleName)
 	summary, err := c.GetArticleSummary(ctx, articleName)
 	if err != nil {
 		return Article{}, err
@@ -162,7 +163,7 @@ func (c *Client) FetchTopArticles(ctx context.Context) (*TopPageviews, error) {
 	if err := c.limiter.Wait(ctx); err != nil {
 		return nil, err
 	}
-	now := time.Now().Truncate(24 * time.Hour).Add(-time.Second)
+	now := time.Now().Add(-24 * time.Hour)
 	url := fmt.Sprintf(wikimediaURL+"/metrics/pageviews/top/en.wikipedia.org/all-access/%04d/%02d/%02d",
 		now.Year(), int(now.Month()), now.Day())
 	resp, err := c.cli.Get(url)

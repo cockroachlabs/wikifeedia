@@ -10,6 +10,7 @@ import (
 const (
 	DatabaseName  = "wikifeedia"
 	articlesTable = `CREATE TABLE IF NOT EXISTS articles (
+		project STRING,
 		article STRING,
 		title STRING,
 		thumbnail_url STRING,
@@ -92,7 +93,7 @@ func (db *DB) GetAllArticles(ctx context.Context) ([]Article, error) {
 }
 
 func (db *DB) UpsertArticle(ctx context.Context, a Article) error {
-	_, err := db.connPool.ExecEx(ctx, `INSERT
+	_, err := db.connPool.ExecEx(ctx, `UPSERT
 	INTO
 		articles
 			(

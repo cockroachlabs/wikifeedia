@@ -46,7 +46,7 @@ func (c *Crawler) CrawlOnce(ctx context.Context) error {
 		a := &articles[i]
 		dba := db.Article{
 			Article:    a.Article,
-			Title:      a.Summary.Titles.Display,
+			Title:      a.Summary.Titles.Normalized,
 			Abstract:   a.Summary.Extract,
 			DailyViews: top.Articles[i].Views,
 			ArticleURL: a.Summary.ContentURLs.Desktop.Page,
