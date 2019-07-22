@@ -84,16 +84,16 @@ spec:
               # EDITME This name is arbitrary and should be used instead
               # of port numbers when referring to the pod. The general
               # rule is to use the protocol name as the port name.
-              name: http
+              name: https
           # Liveness determine if the container should be terminated.
           livenessProbe:
             failureThreshold: 3
             httpGet:
-              path: /
+              path: /healthz
               # EDITME Ensure this port name and the scheme match what
               # your your app is doing.
-              port: http
-              scheme: HTTP
+              port: https
+              scheme: HTTPS
           # Readiness controls when the container is available to serve
           # network requests. For many services, this will be the same
           # query as above. If the backend needs to establish many
@@ -103,24 +103,22 @@ spec:
           readinessProbe:
             failureThreshold: 3
             httpGet:
-              path: /
+              path: /healthz
               # EDITME Ensure this port name and the scheme match what
               # your your app is doing.
-              port: http
-              scheme: HTTP
+              port: https
+              scheme: HTTPS
           resources:
             # The requested amount is used to place the pod on a
             # particular machine.
             #
             # EDITME: These values are often determined empirically.
             requests:
-              cpu: "50m"
-              memory: "32Mi"
-            # These are hard limits that will result in the termination
-            # of the container.
+              cpu: "500m"
+              memory: "1024Mi"
             limits:
-              cpu: "100m"
-              memory: "64Mi"
+              cpu: "500m"
+              memory: "1024Mi"
           args: ["wikifeedia", "--pgurl" , "postgres://root@35.231.186.150:26257?sslmode=disable", "server"]
       terminationGracePeriodSeconds: 30
 ---
@@ -130,16 +128,16 @@ apiVersion: v1
 kind: Service
 metadata:
   annotations:
-    # # EDITME Remove this next line if you don't want an OAuth proxy for
-    # # corp apps. Otherwise, the first time you load the page, you'll see
-    # # a redirect_uri_mismatch error message that will have a link to the
-    # # crdb-dev oauth proxy configuration page.  Follow that, and
-    # # duplicate one of the existing URIs for your desired hostname.
-    # beta.cloud.google.com/backend-config: '{"default":"crdb-dev-iap-config"}'
-    # # EDITME This line controls which protocol the load balancer will
-    # # use when connecting to the app. This default app supports HTTP2.
-    # # Other valid choices are HTTPS or to delete this line for HTTP.
-    # cloud.google.com/app-protocols: '{"https":"HTTP2"}'
+    # EDITME Remove this next line if you don't want an OAuth proxy for
+    # corp apps. Otherwise, the first time you load the page, you'll see
+    # a redirect_uri_mismatch error message that will have a link to the
+    # crdb-dev oauth proxy configuration page.  Follow that, and
+    # duplicate one of the existing URIs for your desired hostname.
+    beta.cloud.google.com/backend-config: '{"default":"crdb-dev-iap-config"}'
+    # EDITME This line controls which protocol the load balancer will
+    # use when connecting to the app. This default app supports HTTP2.
+    # Other valid choices are HTTPS or to delete this line for HTTP.
+    cloud.google.com/app-protocols: '{"https":"HTTP2"}'
   labels:
     app: wikifeedia
   name: wikifeedia
@@ -148,11 +146,11 @@ spec:
   ports:
     # EDITME Each Service object generates a virtual IP address, so you'll
     # generally use the default port for the service.
-    - name: http
-      port: 80
+    - name: https
+      port: 443
       protocol: TCP
       # EDITME This should be the containerPort.name value.
-      targetPort: http
+      targetPort: https
   # This label selector matches against pod labels. Image a case where
   # you have three replicas with a "branch:stable" label and one  with a
   # "branch:canary". Since all four would have an "app:myapp" label, the

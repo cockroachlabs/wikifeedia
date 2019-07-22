@@ -1,6 +1,8 @@
 package server
 
 import (
+	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/cockroachlabs/wikifeedia/db"
@@ -26,14 +28,22 @@ func New(conn *db.DB) *Server {
 	schema := s.schema()
 
 	introspection.AddIntrospectionToSchema(schema)
+
 	s.mux.Handle("/graphqlhttp", graphql.HTTPHandler(schema))
 	s.mux.Handle("/graphql", graphql.Handler(schema))
 	s.mux.Handle("/graphiql/", http.StripPrefix("/graphiql/", graphiql.Handler()))
 	s.mux.Handle("/", http.FileServer(Assets))
+	s.mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/plain; charset=UTF-8")
+		if _, err := w.Write([]byte("OK")); err != nil {
+			log.Printf("could not write response: %v", err)
+		}
+	})
 	return s
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	fmt.Println(r.URL)
 	s.mux.ServeHTTP(w, r)
 }
 
