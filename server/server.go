@@ -10,6 +10,8 @@ import (
 	"github.com/samsarahq/thunder/graphql/schemabuilder"
 )
 
+//go:generate go run github.com/shurcooL/vfsgen/cmd/vfsgendev -source="github.com/cockroachlabs/wikifeedia/server".Assets
+
 // Server is an http.Handler for a graphql server for this application.
 type Server struct {
 	db  *db.DB
@@ -27,6 +29,7 @@ func New(conn *db.DB) *Server {
 	s.mux.Handle("/graphqlhttp", graphql.HTTPHandler(schema))
 	s.mux.Handle("/graphql", graphql.Handler(schema))
 	s.mux.Handle("/graphiql/", http.StripPrefix("/graphiql/", graphiql.Handler()))
+	s.mux.Handle("/", http.FileServer(Assets))
 	return s
 }
 

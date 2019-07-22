@@ -3,6 +3,48 @@
 # TLS between the load-balancer and the backend. This basic
 # configuration also works equally well for HTTPS-1.1 or HTTP backends,
 # there are callouts below for deletions to make.
+# A cronjob to refresh the perf.js file.  It relies on the NFS volume
+# to share perf.js and to maintain incremental-sync data.
+#
+# There are many credentials and secrets which live in a tarball
+# contained in the roachperf-sync-homedir k8s Secret. These files
+# were copied from the old shared host and get untarred into
+# the cockroach user's home directory as part of /entrypoint.sh.
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: wikifeedia-crawl
+spec:
+  # Disallow concurrent jobs. We impose a maximum runtime below.
+  concurrencyPolicy: Forbid
+  # Run hourly.
+  schedule: "0 * * * *"
+  # Must start within 1 minute of expected time, or we'll skip
+  # to the next tick.
+  startingDeadlineSeconds: 60
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: wikifeedia
+        spec:
+          containers:
+            - name: wikifeedia-crawl
+              image: gcr.io/cockroach-dev-inf/cockroachlabs/wikifeedia:master-ajwerner
+              imagePullPolicy: Always
+              # Guaranteed resources.
+              resources:
+                requests:
+                  cpu: 1
+                  memory: 2Gi
+                limits:
+                  cpu: 1
+                  memory: 2Gi
+              args: ["wikifeedia", "--pgurl" , "postgres://root@35.231.186.150:26257?sslmode=disable", "crawl"]
+          restartPolicy: Never
+      backoffLimit: 1
+---
 
 # This deployment object defines a pod template and a replica count.
 apiVersion: apps/v1
@@ -18,7 +60,7 @@ metadata:
 spec:
   # This combination of replicas and selector is really saying
   # "ensure that there are this many pods that match the given label selector".
-  replicas: 3
+  replicas: 1
   selector:
     matchLabels:
       app: wikifeedia
@@ -26,47 +68,32 @@ spec:
     rollingUpdate:
       maxSurge: 1
       maxUnavailable: 1
-    type: wikifeedia
+    type: RollingUpdate
   template:
     metadata:
       labels:
         app: wikifeedia
     spec:
       containers:
-        - image: gcr.io/cockroach-dev-inf/cockroachlabs/wikifeedia:4c37aa6
+        - image: gcr.io/cockroach-dev-inf/cockroachlabs/wikifeedia:master-ajwerner
           imagePullPolicy: Always
           name: wikifeedia
           ports:
-            - containerPort: 8443
+            - containerPort: 8080
               protocol: TCP
               # EDITME This name is arbitrary and should be used instead
               # of port numbers when referring to the pod. The general
               # rule is to use the protocol name as the port name.
-              name: https
-          # A Kubernetes Secret is a key-value map that can be used to
-          # populate environment variables or it can be mounted as
-          # though it were a collection of files. Here, we're going to
-          # say that all keys defined in this secret should be mapped as
-          # environment variables. It's possible, if somewhat tedious,
-          # to do this on a variable-by-variable basis, too.
-          #
-          # If the executable in the container is configured via
-          # command-line flags, these environment variables can be used
-          # in the usual way in an args block.
-          #
-          # EDITME: If you don't need environment variables, delete.
-          envFrom:
-            - secretRef:
-                name: wikifeedia-env-vars
+              name: http
           # Liveness determine if the container should be terminated.
           livenessProbe:
             failureThreshold: 3
             httpGet:
-              path: /healthz
+              path: /
               # EDITME Ensure this port name and the scheme match what
               # your your app is doing.
-              port: https
-              scheme: HTTPS
+              port: http
+              scheme: HTTP
           # Readiness controls when the container is available to serve
           # network requests. For many services, this will be the same
           # query as above. If the backend needs to establish many
@@ -76,11 +103,11 @@ spec:
           readinessProbe:
             failureThreshold: 3
             httpGet:
-              path: /healthz?ready=1
+              path: /
               # EDITME Ensure this port name and the scheme match what
               # your your app is doing.
-              port: https
-              scheme: HTTPS
+              port: http
+              scheme: HTTP
           resources:
             # The requested amount is used to place the pod on a
             # particular machine.
@@ -94,21 +121,8 @@ spec:
             limits:
               cpu: "100m"
               memory: "64Mi"
-          # See discussion immediately below.
-          # EDITME Remove this if you don't need secret files.
-          volumeMounts:
-            - mountPath: "/secrets"
-              name: secrets
+          args: ["wikifeedia", "--pgurl" , "postgres://root@35.231.186.150:26257?sslmode=disable", "server"]
       terminationGracePeriodSeconds: 30
-      # This shows the other way of getting at the contents of a Secret.
-      # We'll create a named volume that gets mapped to the secret. The
-      # keys in the secret are used as filenames.
-      #
-      # EDITME Remove this if you don't need secret files.
-      volumes:
-        - name: secrets
-          secret:
-            secretName: wikifeedia-env-vars
 ---
 # This service object creates a virtual IP address within the cluster
 # that will steer traffic to pods that match a label selector.
@@ -116,16 +130,16 @@ apiVersion: v1
 kind: Service
 metadata:
   annotations:
-    # EDITME Remove this next line if you don't want an OAuth proxy for
-    # corp apps. Otherwise, the first time you load the page, you'll see
-    # a redirect_uri_mismatch error message that will have a link to the
-    # crdb-dev oauth proxy configuration page.  Follow that, and
-    # duplicate one of the existing URIs for your desired hostname.
-    beta.cloud.google.com/backend-config: '{"default":"crdb-dev-iap-config"}'
-    # EDITME This line controls which protocol the load balancer will
-    # use when connecting to the app. This default app supports HTTP2.
-    # Other valid choices are HTTPS or to delete this line for HTTP.
-    cloud.google.com/app-protocols: '{"https":"HTTP2"}'
+    # # EDITME Remove this next line if you don't want an OAuth proxy for
+    # # corp apps. Otherwise, the first time you load the page, you'll see
+    # # a redirect_uri_mismatch error message that will have a link to the
+    # # crdb-dev oauth proxy configuration page.  Follow that, and
+    # # duplicate one of the existing URIs for your desired hostname.
+    # beta.cloud.google.com/backend-config: '{"default":"crdb-dev-iap-config"}'
+    # # EDITME This line controls which protocol the load balancer will
+    # # use when connecting to the app. This default app supports HTTP2.
+    # # Other valid choices are HTTPS or to delete this line for HTTP.
+    # cloud.google.com/app-protocols: '{"https":"HTTP2"}'
   labels:
     app: wikifeedia
   name: wikifeedia
@@ -134,11 +148,11 @@ spec:
   ports:
     # EDITME Each Service object generates a virtual IP address, so you'll
     # generally use the default port for the service.
-    - name: https
-      port: 443
+    - name: http
+      port: 80
       protocol: TCP
       # EDITME This should be the containerPort.name value.
-      targetPort: https
+      targetPort: http
   # This label selector matches against pod labels. Image a case where
   # you have three replicas with a "branch:stable" label and one  with a
   # "branch:canary". Since all four would have an "app:myapp" label, the

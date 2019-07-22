@@ -10,6 +10,7 @@ gcloud --project cockroach-dev-inf builds submit --substitutions=BRANCH_NAME=$BR
 # the name of the container since you can have multiple
 # containers in a deployed pod.
 kubectl set image deployment/wikifeedia wikifeedia=gcr.io/cockroach-dev-inf/cockroachlabs/wikifeedia:$SHA
+kubectl set image cronjob/wikifeedia-crawl wikifeedia-crawl=gcr.io/cockroach-dev-inf/cockroachlabs/wikifeedia:$SHA
 
 echo "Now monitoring pod status. ^C to quit"
 kubectl get po --watch --selector 'app=wikifeedia'
