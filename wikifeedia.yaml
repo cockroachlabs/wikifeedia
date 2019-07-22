@@ -1,0 +1,154 @@
+# This file contains a deployment and service configuration for a
+# generic, HTTP2-based backend. The use of HTTP2 also implies the use of
+# TLS between the load-balancer and the backend. This basic
+# configuration also works equally well for HTTPS-1.1 or HTTP backends,
+# there are callouts below for deletions to make.
+
+# This deployment object defines a pod template and a replica count.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  # What's with labels vs names?  The name is how the configuration
+  # object is identified by k8s.  The labels are arbitrary key-value
+  # pairs, which are used for categorization and selection.  Often,
+  # there will be both "app" and "env" keys, or "canary: true" labels.
+  labels:
+    app: wikifeedia
+  name: wikifeedia
+spec:
+  # This combination of replicas and selector is really saying
+  # "ensure that there are this many pods that match the given label selector".
+  replicas: 3
+  selector:
+    matchLabels:
+      app: wikifeedia
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+    type: wikifeedia
+  template:
+    metadata:
+      labels:
+        app: wikifeedia
+    spec:
+      containers:
+        - image: gcr.io/cockroach-dev-inf/cockroachlabs/wikifeedia:4c37aa6
+          imagePullPolicy: Always
+          name: wikifeedia
+          ports:
+            - containerPort: 8443
+              protocol: TCP
+              # EDITME This name is arbitrary and should be used instead
+              # of port numbers when referring to the pod. The general
+              # rule is to use the protocol name as the port name.
+              name: https
+          # A Kubernetes Secret is a key-value map that can be used to
+          # populate environment variables or it can be mounted as
+          # though it were a collection of files. Here, we're going to
+          # say that all keys defined in this secret should be mapped as
+          # environment variables. It's possible, if somewhat tedious,
+          # to do this on a variable-by-variable basis, too.
+          #
+          # If the executable in the container is configured via
+          # command-line flags, these environment variables can be used
+          # in the usual way in an args block.
+          #
+          # EDITME: If you don't need environment variables, delete.
+          envFrom:
+            - secretRef:
+                name: wikifeedia-env-vars
+          # Liveness determine if the container should be terminated.
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /healthz
+              # EDITME Ensure this port name and the scheme match what
+              # your your app is doing.
+              port: https
+              scheme: HTTPS
+          # Readiness controls when the container is available to serve
+          # network requests. For many services, this will be the same
+          # query as above. If the backend needs to establish many
+          # remote connections or transfer data before actually being
+          # able to serve, the use of distinct liveness and readiness
+          # probes allows the "failure to launch" case to be detected.
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /healthz?ready=1
+              # EDITME Ensure this port name and the scheme match what
+              # your your app is doing.
+              port: https
+              scheme: HTTPS
+          resources:
+            # The requested amount is used to place the pod on a
+            # particular machine.
+            #
+            # EDITME: These values are often determined empirically.
+            requests:
+              cpu: "50m"
+              memory: "32Mi"
+            # These are hard limits that will result in the termination
+            # of the container.
+            limits:
+              cpu: "100m"
+              memory: "64Mi"
+          # See discussion immediately below.
+          # EDITME Remove this if you don't need secret files.
+          volumeMounts:
+            - mountPath: "/secrets"
+              name: secrets
+      terminationGracePeriodSeconds: 30
+      # This shows the other way of getting at the contents of a Secret.
+      # We'll create a named volume that gets mapped to the secret. The
+      # keys in the secret are used as filenames.
+      #
+      # EDITME Remove this if you don't need secret files.
+      volumes:
+        - name: secrets
+          secret:
+            secretName: wikifeedia-env-vars
+---
+# This service object creates a virtual IP address within the cluster
+# that will steer traffic to pods that match a label selector.
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    # EDITME Remove this next line if you don't want an OAuth proxy for
+    # corp apps. Otherwise, the first time you load the page, you'll see
+    # a redirect_uri_mismatch error message that will have a link to the
+    # crdb-dev oauth proxy configuration page.  Follow that, and
+    # duplicate one of the existing URIs for your desired hostname.
+    beta.cloud.google.com/backend-config: '{"default":"crdb-dev-iap-config"}'
+    # EDITME This line controls which protocol the load balancer will
+    # use when connecting to the app. This default app supports HTTP2.
+    # Other valid choices are HTTPS or to delete this line for HTTP.
+    cloud.google.com/app-protocols: '{"https":"HTTP2"}'
+  labels:
+    app: wikifeedia
+  name: wikifeedia
+spec:
+  externalTrafficPolicy: Cluster
+  ports:
+    # EDITME Each Service object generates a virtual IP address, so you'll
+    # generally use the default port for the service.
+    - name: https
+      port: 443
+      protocol: TCP
+      # EDITME This should be the containerPort.name value.
+      targetPort: https
+  # This label selector matches against pod labels. Image a case where
+  # you have three replicas with a "branch:stable" label and one  with a
+  # "branch:canary". Since all four would have an "app:myapp" label, the
+  # service will steer traffic between all instances. This requires, of
+  # course, that the backend can operate in a mixed-version deployment.
+  selector:
+    app: wikifeedia
+    # This is also a "NodePort" service (as opposed to "LoadBalancer"),
+    # which makes every machine in the k8s cluster forward network
+    # traffic from an arbitrarily-chosen port number on the host
+    # machine's "real" IP address. This is ultimately how the Ingress
+    # controller routes HTTP requests into the cluster.
+  type: NodePort
