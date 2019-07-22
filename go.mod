@@ -1,4 +1,4 @@
-module github.com/awoods187/wikifeedia
+module github.com/cockroachlabs/wikifeedia
 
 go 1.12
 

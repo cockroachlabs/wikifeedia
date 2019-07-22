@@ -3,7 +3,7 @@ package server
 import (
 	"net/http"
 
-	"github.com/awoods187/wikifeedia/db"
+	"github.com/cockroachlabs/wikifeedia/db"
 	"github.com/samsarahq/thunder/graphql"
 	"github.com/samsarahq/thunder/graphql/graphiql"
 	"github.com/samsarahq/thunder/graphql/introspection"

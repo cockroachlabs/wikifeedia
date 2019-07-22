@@ -8,10 +8,10 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/awoods187/wikifeedia/crawler"
-	"github.com/awoods187/wikifeedia/db"
-	"github.com/awoods187/wikifeedia/server"
-	"github.com/awoods187/wikifeedia/wikipedia"
+	"github.com/cockroachlabs/wikifeedia/crawler"
+	"github.com/cockroachlabs/wikifeedia/db"
+	"github.com/cockroachlabs/wikifeedia/server"
+	"github.com/cockroachlabs/wikifeedia/wikipedia"
 	"github.com/urfave/cli"
 )
 

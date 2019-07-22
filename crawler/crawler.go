@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/awoods187/wikifeedia/db"
-	"github.com/awoods187/wikifeedia/wikipedia"
+	"github.com/cockroachlabs/wikifeedia/db"
+	"github.com/cockroachlabs/wikifeedia/wikipedia"
 )
 
 type Crawler struct {
