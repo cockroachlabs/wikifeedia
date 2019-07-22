@@ -4,47 +4,75 @@
 
 .AppTitle {
   color: black;
+  width: 100%
 }
 
 .Articles {
-  flex-direction: row;
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-grow: 1;
+  flex-wrap: wrap;
+  margin: auto;
+  max-width: 1000px;
 }
 
 .Article {
+  max-width: 900px;
   min-width: 100px;
-  min-height: 400px;
+  margin: auto;
+  min-height: 300px;
   border-color: #a7d7f9;
   border-width: 1px;
   border-style: solid;
   display: flex;
+  flex-grow: 1;
   align-items: center;
   justify-content: center;
   background-color: white;
-  margin: 30px;
+  margin: 20px;
   flex-flow: rows;
   flex-wrap: wrap;
 }
 
-.ArticleImage {
+.ArticleImageContainer {
   background: #f6f6f6;
   margin: 20px; 
   display: flex;
   justify-content: center;
   align-items: center;
   margin-left: 30px;
-  flex-grow: 1;
   max-width: 400px;
-  min-width: 230px;
-  min-height: 400px;
+  min-width: 200px;
+  padding: 20px;
   border: 1px solid #a2a9b1;
 }
 
+.ArticleImage {
+  -webkit-box-flex: 1;
+  -moz-box-flex: 1;
+  box-flex: 1;
+  -webkit-flex: 1 1 auto;
+  flex: 1 1 auto; 
+ 
+}
+
+.ArticleImage img {
+  width: 100%;
+  max-width: 300px;
+}
+
+
 .ArticleContent {
-  max-width: 400px;
+  max-width: 300px;
+  min-width: 200px;
   margin: 20px;
+  flex-shrink: initial;
+  flex-grow: 0;  
+}
+
+.ArticleContent p {
+  max-width: 100%;
 }
 
 .ArticleTitle {
@@ -54,26 +82,35 @@
 }
 
 .ArticleAbstractText {
-  font-size: .5em;
+  font-size: .75em;
   text-align: left;
   color: black;
 }
 
+.AppHeaderContainer {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
 .App-header {
   background-color: #f6f6f6;
-  min-height: 100vh;
+  min-height: .75em;
   display: flex;
+  font-size: 20px;
   flex-direction: column;
+  flex-grow: 1;
   align-items: center;
   justify-content: center;
   font-size: calc(10px + 2vmin);
   color: white;
+  text-align: left;
+  max-width: 900px;
+  margin-left: 10px;
 }
 
 .App-link {
   color: #61dafb;
 }
 
-p, h1, h2, h3 {
-  font-family: 'Linux Libertine','Georgia','Times',serif;
-}

@@ -20,9 +20,6 @@ const client = new ApolloClient({
   cache: new InMemoryCache(),
 });
 
-
-
-
 function Feed() {
   const GET_FEED = gql`
 {
@@ -50,10 +47,12 @@ function Feed() {
         title
       }) => (
         <div className="Article" id={article} key={title}>
-          <div className="ArticleImage">
-            <a href={articleURL} target="_blank">
-              <img src={thumbnailURL} alt={title}/>
-            </a>
+          <div className="ArticleImageContainer">
+            <div className="ArticleImage">
+              <a href={articleURL} target="_blank" rel="noopener noreferrer">
+                <img src={thumbnailURL} alt={title}/>
+              </a>
+            </div>
           </div>
           <div className="ArticleContent">
             <h2 className="ArticleTitle">{title}</h2>
@@ -64,7 +63,7 @@ function Feed() {
         </div>
       ))
       return (
-        <div name="Articles">
+        <div className="Articles">
           {rows}
          </div>
       );
@@ -76,10 +75,12 @@ function App() {
   function App() {
     return (
     <div className="App">
-      <header className="App-header">
-        <h1 className="AppTitle">Wikifeedia</h1> 
-        <Feed/>
-      </header>
+      <div className="AppHeaderContainer">
+        <div className="App-header">
+            <h1 className="AppTitle">Wikifeedia</h1> 
+        </div>
+      </div> 
+      <Feed/>
     </div>
     );
   };
