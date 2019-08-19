@@ -114,3 +114,10 @@
   color: #61dafb;
 }
 
+.LangTabs {
+  display: flex;
+  flex-flow: row;
+  justify-content: space-between;
+  max-width: 500px;
+  margin: auto;
+}

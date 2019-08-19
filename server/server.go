@@ -1,11 +1,13 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
 
 	"github.com/cockroachlabs/wikifeedia/db"
+	"github.com/cockroachlabs/wikifeedia/wikipedia"
 	"github.com/samsarahq/thunder/graphql"
 	"github.com/samsarahq/thunder/graphql/graphiql"
 	"github.com/samsarahq/thunder/graphql/introspection"
@@ -47,13 +49,24 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	s.mux.ServeHTTP(w, r)
 }
 
+func (s *Server) getAllArticles(
+	ctx context.Context, args struct {
+		Project string `json:"project"`
+	},
+) ([]db.Article, error) {
+	if !wikipedia.IsProject(args.Project) {
+		return nil, fmt.Errorf("%s is not a valid project")
+	}
+	return s.db.GetAllArticles(ctx, args.Project)
+}
+
 // schema builds the graphql schema.
 func (s *Server) schema() *graphql.Schema {
 	builder := schemabuilder.NewSchema()
 	obj := builder.Object("Article", db.Article{})
 	obj.Key("article")
 	q := builder.Query()
-	q.FieldFunc("articles", s.db.GetAllArticles)
+	q.FieldFunc("articles", s.getAllArticles)
 	mut := builder.Mutation()
 	mut.FieldFunc("echo", func(args struct{ Message string }) string {
 		return args.Message

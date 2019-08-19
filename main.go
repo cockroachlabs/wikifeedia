@@ -67,7 +67,6 @@ func main() {
 			Name:        "server",
 			Description: "Run the server",
 			Action: func(c *cli.Context) error {
-				priv, certBytes, err := generateCertificate()
 				pgurl := c.GlobalString("pgurl")
 				fmt.Println("Setting up database at", pgurl)
 				conn, err := db.New(pgurl)
@@ -78,15 +77,25 @@ func main() {
 				server := http.Server{
 					Addr:    fmt.Sprintf(":%d", c.Int("port")),
 					Handler: h,
-					TLSConfig: &tls.Config{
+				}
+				if !c.Bool("insecure") {
+					priv, certBytes, err := generateCertificate()
+					if err != nil {
+						return errors.Wrapf(err, "failed to generate certificate")
+					}
+					server.TLSConfig = &tls.Config{
 						Certificates: []tls.Certificate{{
 							Certificate: [][]byte{certBytes},
 							PrivateKey:  priv,
 						}},
-					},
-				}
-				if err := server.ListenAndServeTLS("" /* certfile */, "" /* keyfile */); err != nil && err != http.ErrServerClosed {
-					return errors.Wrap(err, "failed to start server")
+					}
+					if err := server.ListenAndServeTLS("" /* certfile */, "" /* keyfile */); err != nil && err != http.ErrServerClosed {
+						return errors.Wrap(err, "failed to start server")
+					}
+				} else {
+					if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+						return errors.Wrap(err, "failed to start server")
+					}
 				}
 				return nil
 			},
@@ -96,6 +105,10 @@ func main() {
 					Value: 8080,
 					Usage: "port on which to serve",
 				},
+				cli.BoolFlag{
+					Name:  "insecure",
+					Usage: "disables TLS",
+				},
 			},
 		},
 		{
@@ -104,13 +117,14 @@ func main() {
 			Action: func(c *cli.Context) error {
 				ctx := context.Background()
 				wiki := wikipedia.New()
-				top, err := wiki.FetchTopArticles(ctx)
+				project := c.String("project")
+				top, err := wiki.FetchTopArticles(ctx, project)
 				if err != nil {
 					return err
 				}
 				n := c.Int("num-articles")
 				for i := 0; i < len(top.Articles) && i < n; i++ {
-					article, err := wiki.GetArticle(ctx, top.Articles[i].Article)
+					article, err := wiki.GetArticle(ctx, project, top.Articles[i].Article)
 					if err != nil {
 						return err
 					}
@@ -126,6 +140,11 @@ func main() {
 					Name:  "num-articles,n",
 					Value: 10,
 					Usage: "number of articles to fetch",
+				},
+				cli.StringFlag{
+					Name:  "project",
+					Value: "en",
+					Usage: "project to scan",
 				},
 			},
 		},

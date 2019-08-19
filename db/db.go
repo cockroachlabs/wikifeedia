@@ -7,6 +7,10 @@ import (
 	"github.com/jackc/pgx"
 )
 
+// Probably I want to create a table for articles and then a separate table for article views
+
+// I want information about articles on an hourly basis as well as a daily basis.
+
 const (
 	DatabaseName  = "wikifeedia"
 	articlesTable = `CREATE TABLE IF NOT EXISTS articles (
@@ -23,6 +27,7 @@ const (
 )
 
 type Article struct {
+	Project      string `json:"project"`
 	Article      string `json:"article"`
 	Title        string `json:"title"`
 	ThumbnailURL string `json:"thumbnail_url"`
@@ -66,8 +71,9 @@ func New(pgurl string) (*DB, error) {
 	return db, nil
 }
 
-func (db *DB) GetAllArticles(ctx context.Context) ([]Article, error) {
+func (db *DB) GetAllArticles(ctx context.Context, project string) ([]Article, error) {
 	rows, err := db.connPool.QueryEx(ctx, `SELECT
+    project,
 		article,
 		title,
 		thumbnail_url,
@@ -75,14 +81,19 @@ func (db *DB) GetAllArticles(ctx context.Context) ([]Article, error) {
 		abstract,
 		article_url,
 		daily_views
-	FROM articles ORDER BY daily_views DESC`, nil)
+	FROM articles
+  WHERE project = $1
+  AND thumbnail_url != ''
+  AND abstract != ''
+  ORDER BY daily_views DESC
+  LIMIT 100`, nil, project)
 	if err != nil {
 		return nil, err
 	}
 	var results []Article
 	var a Article
 	for rows.Next() {
-		if err := rows.Scan(&a.Article, &a.Title,
+		if err := rows.Scan(&a.Project, &a.Article, &a.Title,
 			&a.ThumbnailURL, &a.ImageURL, &a.Abstract,
 			&a.ArticleURL, &a.DailyViews); err != nil {
 			return nil, err
@@ -97,6 +108,7 @@ func (db *DB) UpsertArticle(ctx context.Context, a Article) error {
 	INTO
 		articles
 			(
+        project,
 				article,
 				title,
 				thumbnail_url,
@@ -106,8 +118,9 @@ func (db *DB) UpsertArticle(ctx context.Context, a Article) error {
 				daily_views
 			)
 	VALUES
-		($1, $2, $3, $4, $5, $6, $7)`,
+		($1, $2, $3, $4, $5, $6, $7, $8)`,
 		nil,
+		a.Project,
 		a.Article,
 		a.Title,
 		a.ThumbnailURL,

@@ -22,9 +22,8 @@ func New(db *db.DB, wiki *wikipedia.Client) *Crawler {
 	}
 }
 
-// CrawlOnce does one pull of the top list of articles and then fetches them all.
-func (c *Crawler) CrawlOnce(ctx context.Context) error {
-	top, err := c.wiki.FetchTopArticles(ctx)
+func (c *Crawler) crawlProjectOnce(ctx context.Context, project string) error {
+	top, err := c.wiki.FetchTopArticles(ctx, project)
 	if err != nil {
 		return err
 	}
@@ -32,7 +31,7 @@ func (c *Crawler) CrawlOnce(ctx context.Context) error {
 	failed := map[int]bool{}
 	for i := range top.Articles {
 		ta := &top.Articles[i]
-		article, err := c.wiki.GetArticle(ctx, ta.Article)
+		article, err := c.wiki.GetArticle(ctx, project, ta.Article)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "failed to retreive %q: %v\n", ta.Article, err)
 			failed[i] = true
@@ -45,6 +44,7 @@ func (c *Crawler) CrawlOnce(ctx context.Context) error {
 		}
 		a := &articles[i]
 		dba := db.Article{
+			Project:    project,
 			Article:    a.Article,
 			Title:      a.Summary.Titles.Normalized,
 			Abstract:   a.Summary.Extract,
@@ -56,6 +56,16 @@ func (c *Crawler) CrawlOnce(ctx context.Context) error {
 			dba.ThumbnailURL = a.Media[0].Thumbnail.Source
 		}
 		if err := c.db.UpsertArticle(ctx, dba); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// CrawlOnce does one pull of the top list of articles and then fetches them all.
+func (c *Crawler) CrawlOnce(ctx context.Context) error {
+	for _, p := range wikipedia.Projects {
+		if err := c.crawlProjectOnce(ctx, p); err != nil {
 			return err
 		}
 	}

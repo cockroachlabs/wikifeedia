@@ -12,9 +12,51 @@ import (
 	"golang.org/x/time/rate"
 )
 
+var Projects = []string{
+	"en",
+	"fr",
+	"es",
+	"de",
+	"ru",
+	"ja",
+	"nl",
+	"it",
+	"sv",
+	"pl",
+	"vi",
+	"pt",
+	"ar",
+	"zh",
+	"uk",
+	"ro",
+	"bg",
+	"th",
+}
+
 const wikimediaURL = "https://wikimedia.org/api/rest_v1"
 const wikipediaURL = "https://en.wikipedia.org/api/rest_v1"
 
+var apiURLs = func() map[string]string {
+	ret := make(map[string]string, len(Projects))
+	for _, project := range Projects {
+		ret[project] = fmt.Sprintf("https://%s.wikipedia.org/api/rest_v1", project)
+	}
+	return ret
+}()
+
+func IsProject(project string) bool {
+	_, isProject := apiURLs[project]
+	return isProject
+}
+
+func apiURL(project string) string {
+	if url, ok := apiURLs[project]; ok {
+		return url
+	}
+	panic(fmt.Errorf("project %q is not allowed", project))
+}
+
+// Client reads from wikipedia.
 type Client struct {
 	cli     http.Client
 	limiter *rate.Limiter
@@ -47,6 +89,7 @@ type TopPageviewsArticle struct {
 }
 
 type Article struct {
+	Project string
 	Article string
 	Summary ArticleSummary
 	Media   []ArticleMediaItem
@@ -95,13 +138,13 @@ type ArticleSummary struct {
 	ContentURLs  ContentURLs `json:"content_urls"`
 }
 
-func (c *Client) GetArticle(ctx context.Context, articleName string) (Article, error) {
+func (c *Client) GetArticle(ctx context.Context, project, articleName string) (Article, error) {
 	fmt.Println(articleName)
-	summary, err := c.GetArticleSummary(ctx, articleName)
+	summary, err := c.GetArticleSummary(ctx, project, articleName)
 	if err != nil {
 		return Article{}, err
 	}
-	media, err := c.GetArticleMedia(ctx, articleName)
+	media, err := c.GetArticleMedia(ctx, project, articleName)
 	if err != nil {
 		return Article{}, err
 	}
@@ -113,12 +156,12 @@ func (c *Client) GetArticle(ctx context.Context, articleName string) (Article, e
 }
 
 func (c *Client) GetArticleSummary(
-	ctx context.Context, articleName string,
+	ctx context.Context, project string, articleName string,
 ) (summary ArticleSummary, err error) {
 	if err = c.limiter.Wait(ctx); err != nil {
 		return summary, err
 	}
-	url := fmt.Sprintf(wikipediaURL + "/page/summary/" + articleName)
+	url := fmt.Sprintf(apiURL(project) + "/page/summary/" + articleName)
 	resp, err := c.cli.Get(url)
 	if err != nil {
 		return summary, err
@@ -135,12 +178,12 @@ func (c *Client) GetArticleSummary(
 }
 
 func (c *Client) GetArticleMedia(
-	ctx context.Context, articleName string,
+	ctx context.Context, project, articleName string,
 ) ([]ArticleMediaItem, error) {
 	if err := c.limiter.Wait(ctx); err != nil {
 		return nil, err
 	}
-	url := fmt.Sprintf(wikipediaURL + "/page/media/" + articleName)
+	url := fmt.Sprintf(apiURL(project) + "/page/media/" + articleName)
 	resp, err := c.cli.Get(url)
 	if err != nil {
 		return nil, err
@@ -159,13 +202,13 @@ func (c *Client) GetArticleMedia(
 	return result.Items, nil
 }
 
-func (c *Client) FetchTopArticles(ctx context.Context) (*TopPageviews, error) {
+func (c *Client) FetchTopArticles(ctx context.Context, project string) (*TopPageviews, error) {
 	if err := c.limiter.Wait(ctx); err != nil {
 		return nil, err
 	}
 	now := time.Now().Add(-48 * time.Hour)
-	url := fmt.Sprintf(wikimediaURL+"/metrics/pageviews/top/en.wikipedia.org/all-access/%04d/%02d/%02d",
-		now.Year(), int(now.Month()), now.Day())
+	url := fmt.Sprintf(wikimediaURL+"/metrics/pageviews/top/%s.wikipedia.org/all-access/%04d/%02d/%02d",
+		project, now.Year(), int(now.Month()), now.Day())
 	resp, err := c.cli.Get(url)
 	if err != nil {
 		return nil, err
@@ -190,7 +233,9 @@ func (c *Client) FetchTopArticles(ctx context.Context) (*TopPageviews, error) {
 }
 
 func shouldFilter(articleName string) bool {
-	return strings.HasPrefix(articleName, "Special:") || articleName == "Main_Page"
+	return strings.HasPrefix(articleName, "Special:") ||
+		articleName == "Main_Page" ||
+		strings.HasPrefix(articleName, "Wikipedia:")
 }
 
 func filterSpecial(top []TopPageviewsArticle) (filtered []TopPageviewsArticle) {
