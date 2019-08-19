@@ -12,5 +12,5 @@
 *.out
 
 vendor
-
 wikifeedia
+server/assets_vfsdata.go 
