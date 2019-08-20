@@ -64,7 +64,7 @@ type Client struct {
 
 func New() *Client {
 	return &Client{
-		limiter: rate.NewLimiter(100, 10),
+		limiter: rate.NewLimiter(75, 5),
 	}
 }
 
