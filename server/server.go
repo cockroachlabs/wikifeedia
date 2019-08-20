@@ -49,7 +49,6 @@ func New(conn *db.DB) *Server {
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	fmt.Println(r.URL)
 	s.mux.ServeHTTP(w, r)
 }
 
