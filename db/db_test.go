@@ -70,11 +70,13 @@ func TestDB(t *testing.T) {
 	require.Nil(t, err)
 	articles := []Article{
 		{
+			Project:    "en",
 			Article:    "foo",
 			Title:      "foo",
 			DailyViews: 123,
 		},
 		{
+			Project:    "en",
 			Article:    "bar",
 			Title:      "bar",
 			DailyViews: 321,
@@ -84,7 +86,7 @@ func TestDB(t *testing.T) {
 	for _, a := range articles {
 		assert.Nil(t, db.UpsertArticle(ctx, a))
 	}
-	got, err := db.GetAllArticles(ctx)
+	got, err := db.GetArticles(ctx, "en", 0, 1000)
 	assert.Nil(t, err)
 	assert.Len(t, got, 2)
 	assert.Equal(t, articles[1], got[0])

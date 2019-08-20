@@ -49,15 +49,18 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	s.mux.ServeHTTP(w, r)
 }
 
-func (s *Server) getAllArticles(
-	ctx context.Context, args struct {
+func (s *Server) getArticles(
+	ctx context.Context,
+	args struct {
 		Project string `json:"project"`
+		Offset  int32  `json:"offset"`
+		Limit   int32  `json:"limit"`
 	},
 ) ([]db.Article, error) {
 	if !wikipedia.IsProject(args.Project) {
 		return nil, fmt.Errorf("%s is not a valid project")
 	}
-	return s.db.GetAllArticles(ctx, args.Project)
+	return s.db.GetArticles(ctx, args.Project, int(args.Offset), int(args.Limit))
 }
 
 // schema builds the graphql schema.
@@ -66,7 +69,7 @@ func (s *Server) schema() *graphql.Schema {
 	obj := builder.Object("Article", db.Article{})
 	obj.Key("article")
 	q := builder.Query()
-	q.FieldFunc("articles", s.getAllArticles)
+	q.FieldFunc("articles", s.getArticles)
 	mut := builder.Mutation()
 	mut.FieldFunc("echo", func(args struct{ Message string }) string {
 		return args.Message

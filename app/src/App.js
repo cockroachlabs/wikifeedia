@@ -19,8 +19,8 @@ const client = new ApolloClient({
 });
 
 const GET_FEED = gql`
-query Feed($project: String!) {
-  articles(project: $project) {
+query Feed($project: String!, $offset: Int, $limit: Int) {
+  articles(project: $project, offset: $offset, limit: $limit) {
     project
     abstract
     article
@@ -30,48 +30,101 @@ query Feed($project: String!) {
     thumbnailURL
     title
   }
-
 }`;
 
-function Feed({ client, project }) {
-  const {loading, error, data } = useQuery(GET_FEED, {
-    variables: {
-      "project": project,
+
+class Feed extends React.Component {
+  componentDidMount() {
+    window.addEventListener("scroll", this.handleOnScroll);
+  }
+
+  componentWillUnmount() {
+    window.removeEventListener("scroll", this.handleOnScroll);
+  }
+
+  handleOnScroll = () => {
+    // http://stackoverflow.com/questions/9439725/javascript-how-to-detect-if-browser-window-is-scrolled-to-bottom
+    var scrollTop =
+      (document.documentElement && document.documentElement.scrollTop) ||
+      document.body.scrollTop;
+    var scrollHeight =
+      (document.documentElement && document.documentElement.scrollHeight) ||
+      document.body.scrollHeight;
+    var clientHeight =
+      document.documentElement.clientHeight || window.innerHeight;
+    var scrolledToBottom = Math.ceil(scrollTop + clientHeight) >= scrollHeight;
+    if (scrolledToBottom) {
+      this.props.onLoadMore();
     }
+  };
+
+  render() {
+    if (this.props.error) return `Error! ${this.props.error.message}`;
+    if (!this.props.articles && this.props.loading) return <p>Loading....</p>;
+    const articles = this.props.articles || [];
+    return (
+      <div className="Articles">
+        {articles.map(({
+          project,
+          article,
+          abstract,
+          articleURL,
+          dailyViews,
+          imageURL,
+          thumbnailURL,
+          title
+        }, idx) => (
+        <div className="Article" id={article} key={idx} project={project}>
+          <div className="ArticleImageContainer">
+            <div className="ArticleImage">
+              <a href={articleURL} target="_blank" rel="noopener noreferrer">
+                <img src={thumbnailURL} alt={title}/>
+              </a>
+            </div>
+          </div>
+          <div className="ArticleContent">
+            <h2 className="ArticleTitle">{title}</h2>
+            <p className="ArticleAbstractText">
+              {abstract}
+            </p>
+          </div>
+        </div>)
+      )}
+      </div>
+    );
+  }
+}
+
+function FeedApp({ project }) {
+  const {loading, error, data, fetchMore } = useQuery(GET_FEED, {
+    variables: {
+      project: project,
+      offset: 0,
+      limit: 10
+    },
+    fetchPolicy: "cache-and-network"
   });
-  if (loading) return 'Loading...';
-  if (error) return `Error! ${error.message}`;
-  const rows = data.articles.map(({
-    project,
-    article,
-    abstract,
-    articleURL,
-    dailyViews,
-    imageURL,
-    thumbnailURL,
-    title
-  }) => (
-    <div className="Article" id={article} key={title} project={project}>
-      <div className="ArticleImageContainer">
-        <div className="ArticleImage">
-          <a href={articleURL} target="_blank" rel="noopener noreferrer">
-            <img src={thumbnailURL} alt={title}/>
-          </a>
-        </div>
-      </div>
-      <div className="ArticleContent">
-        <h2 className="ArticleTitle">{title}</h2>
-        <p className="ArticleAbstractText">
-          {abstract}
-        </p>
-      </div>
-    </div>
-  ))
   return (
-    <div className="Articles">
-      {rows}
-    </div>
-  );
+    <Feed
+      key="feed"
+      articles={data.articles || []}
+      loading={loading}
+      error={error}
+      onLoadMore={() =>
+        fetchMore({
+          variables: {
+            offset: data.articles.length
+          },
+          updateQuery: (prev, { fetchMoreResult }) => {
+            if (!fetchMoreResult) return prev;
+            return Object.assign({}, prev, {
+              articles: [...prev.articles, ...fetchMoreResult.articles]
+            });
+          }
+        })
+      }
+    />
+  )
 }
 
 const languages = [
@@ -107,7 +160,7 @@ class App extends React.Component {
   render()  {
     const langTabs = languages.map((lang) => {
       const onClick = () => {this.setProject(lang)};
-      return (<div onClick={onClick}>{lang}</div>)
+      return (<div onClick={onClick} key={lang}>{lang}</div>)
     });
     function App({project}) {
       return (
@@ -121,7 +174,7 @@ class App extends React.Component {
           </div>
         </div>
         
-        <Feed project={project}/>
+        <FeedApp project={project}/>
       </div>
       );
     };

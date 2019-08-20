@@ -3,6 +3,7 @@ package db
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/jackc/pgx"
 )
@@ -22,7 +23,8 @@ const (
 		abstract STRING,
 		article_url STRING,
 		daily_views INT,
-		PRIMARY KEY (article)
+		INDEX (project, daily_views DESC),
+		PRIMARY KEY (project, article)
 	);`
 )
 
@@ -71,8 +73,10 @@ func New(pgurl string) (*DB, error) {
 	return db, nil
 }
 
-func (db *DB) GetAllArticles(ctx context.Context, project string) ([]Article, error) {
-	rows, err := db.connPool.QueryEx(ctx, `SELECT
+func (db *DB) GetArticles(
+	ctx context.Context, project string, offset, limit int,
+) ([]Article, error) {
+	rows, err := db.connPool.QueryEx(ctx, fmt.Sprintf(`SELECT
     project,
 		article,
 		title,
@@ -83,10 +87,9 @@ func (db *DB) GetAllArticles(ctx context.Context, project string) ([]Article, er
 		daily_views
 	FROM articles
   WHERE project = $1
-  AND thumbnail_url != ''
-  AND abstract != ''
   ORDER BY daily_views DESC
-  LIMIT 100`, nil, project)
+  LIMIT %d
+  OFFSET %d`, limit, offset), nil, project)
 	if err != nil {
 		return nil, err
 	}

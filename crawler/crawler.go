@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"sync"
 
 	"github.com/cockroachlabs/wikifeedia/db"
 	"github.com/cockroachlabs/wikifeedia/wikipedia"
@@ -27,33 +28,44 @@ func (c *Crawler) crawlProjectOnce(ctx context.Context, project string) error {
 	if err != nil {
 		return err
 	}
-	var articles []wikipedia.Article
-	failed := map[int]bool{}
-	for i := range top.Articles {
-		ta := &top.Articles[i]
-		article, err := c.wiki.GetArticle(ctx, project, ta.Article)
+	var wg sync.WaitGroup
+	type article struct {
+		ta *wikipedia.TopPageviewsArticle
+		a  *wikipedia.Article
+	}
+	articleChan := make(chan article, 10)
+	fetchArticle := func(ta *wikipedia.TopPageviewsArticle) {
+		defer wg.Done()
+		a, err := c.wiki.GetArticle(ctx, project, ta.Article)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "failed to retreive %q: %v\n", ta.Article, err)
-			failed[i] = true
+			return
 		}
-		articles = append(articles, article)
+		articleChan <- article{
+			a:  &a,
+			ta: ta,
+		}
 	}
-	for i := range articles {
-		if failed[i] {
+	for i := range top.Articles {
+		wg.Add(1)
+		go fetchArticle(&top.Articles[i])
+	}
+	go func() { wg.Wait(); close(articleChan) }()
+	for a := range articleChan {
+		if a.a.Summary.Extract == "" || len(a.a.Media) == 0 {
 			continue
 		}
-		a := &articles[i]
 		dba := db.Article{
 			Project:    project,
-			Article:    a.Article,
-			Title:      a.Summary.Titles.Normalized,
-			Abstract:   a.Summary.Extract,
-			DailyViews: top.Articles[i].Views,
-			ArticleURL: a.Summary.ContentURLs.Desktop.Page,
+			Article:    a.a.Article,
+			Title:      a.a.Summary.Titles.Normalized,
+			Abstract:   a.a.Summary.Extract,
+			DailyViews: a.ta.Views,
+			ArticleURL: a.a.Summary.ContentURLs.Desktop.Page,
 		}
-		if len(a.Media) > 0 {
-			dba.ImageURL = a.Media[0].Original.Source
-			dba.ThumbnailURL = a.Media[0].Thumbnail.Source
+		if len(a.a.Media) > 0 {
+			dba.ImageURL = a.a.Media[0].Original.Source
+			dba.ThumbnailURL = a.a.Media[0].Thumbnail.Source
 		}
 		if err := c.db.UpsertArticle(ctx, dba); err != nil {
 			return err
