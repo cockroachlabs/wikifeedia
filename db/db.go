@@ -86,6 +86,7 @@ func (db *DB) GetArticles(
 		article_url,
 		daily_views
 	FROM articles
+  AS OF SYSTEM TIME experimental_follower_read_timestamp()
   WHERE project = $1
   ORDER BY daily_views DESC
   LIMIT %d
