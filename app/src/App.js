@@ -152,7 +152,7 @@ const languages = [
 
 class App extends React.Component {
   state = {
-    project: "es",
+    project: "en",
   }
   setProject(project) {
     this.setState({project: project});
