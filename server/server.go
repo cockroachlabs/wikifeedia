@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/NYTimes/gziphandler"
 	"github.com/cockroachlabs/wikifeedia/db"
 	"github.com/cockroachlabs/wikifeedia/wikipedia"
 	"github.com/samsarahq/thunder/graphql"
@@ -31,14 +32,16 @@ func New(conn *db.DB) *Server {
 
 	introspection.AddIntrospectionToSchema(schema)
 	fs := http.FileServer(Assets)
-	s.mux.Handle("/graphqlhttp", graphql.HTTPHandler(schema))
+	s.mux.Handle("/graphqlhttp",
+		gziphandler.GzipHandler(graphql.HTTPHandler(schema)))
 	s.mux.Handle("/graphql", graphql.Handler(schema))
 	s.mux.Handle("/graphiql/", http.StripPrefix("/graphiql/", graphiql.Handler()))
-	s.mux.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	staticHandler := gziphandler.GzipHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Vary", "Accept-Encoding")
 		w.Header().Set("Cache-Control", "public, max-age=600")
 		fs.ServeHTTP(w, r)
 	}))
+	s.mux.Handle("/", staticHandler)
 	s.mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "text/plain; charset=UTF-8")
 		if _, err := w.Write([]byte("OK")); err != nil {
