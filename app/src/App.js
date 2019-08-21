@@ -18,9 +18,14 @@ const client = new ApolloClient({
   cache: new InMemoryCache(),
 });
 
+function useFollowerRead() {
+    const urlParams = new URLSearchParams(window.location.search);
+    return !(urlParams.get("use_follower_read") === "false");
+}
+
 const GET_FEED = gql`
-query Feed($project: String!, $offset: Int, $limit: Int) {
-  articles(project: $project, offset: $offset, limit: $limit) {
+query Feed($project: String!, $offset: Int, $limit: Int, $followerRead: Boolean) {
+  articles(project: $project, offset: $offset, limit: $limit, followerRead: $followerRead) {
     project
     abstract
     article
@@ -100,7 +105,8 @@ function FeedApp({ project }) {
     variables: {
       project: project,
       offset: 0,
-      limit: 10
+      limit: 10,
+      followerRead: useFollowerRead()
     },
     fetchPolicy: "cache-and-network"
   });

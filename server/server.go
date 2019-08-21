@@ -55,15 +55,17 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (s *Server) getArticles(
 	ctx context.Context,
 	args struct {
-		Project string `json:"project"`
-		Offset  int32  `json:"offset"`
-		Limit   int32  `json:"limit"`
+		Project      string
+		Offset       int32
+		Limit        int32
+		FollowerRead *bool
 	},
 ) ([]db.Article, error) {
 	if !wikipedia.IsProject(args.Project) {
 		return nil, fmt.Errorf("%s is not a valid project")
 	}
-	return s.db.GetArticles(ctx, args.Project, int(args.Offset), int(args.Limit))
+	return s.db.GetArticles(ctx, args.Project, int(args.Offset), int(args.Limit),
+		args.FollowerRead != nil && *args.FollowerRead)
 }
 
 // schema builds the graphql schema.

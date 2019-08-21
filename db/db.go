@@ -43,6 +43,9 @@ type Article struct {
 type DB struct {
 	connPool *pgx.ConnPool
 	conf     pgx.ConnPoolConfig
+
+	getArticles             *pgx.PreparedStatement
+	getArticlesFollowerRead *pgx.PreparedStatement
 }
 
 // MaxConnections controls the maximum number of connections for a DB.
@@ -70,13 +73,19 @@ func New(pgurl string) (*DB, error) {
 	if err := setupDatabase(db); err != nil {
 		return nil, err
 	}
+	db.getArticles, err = connPool.Prepare("get_articles", getArticlesSQL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to prepare get_articles: %v", err)
+	}
+	db.getArticlesFollowerRead, err = connPool.Prepare("get_articles_follower_read", getArticlesFollowerReadSQL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to prepare get_articles_follower_read: %v", err)
+	}
 	return db, nil
 }
 
-func (db *DB) GetArticles(
-	ctx context.Context, project string, offset, limit int,
-) ([]Article, error) {
-	rows, err := db.connPool.QueryEx(ctx, fmt.Sprintf(`SELECT
+const (
+	getArticlesSelection = `SELECT
     project,
 		article,
 		title,
@@ -85,12 +94,26 @@ func (db *DB) GetArticles(
 		abstract,
 		article_url,
 		daily_views
-	FROM articles
-  AS OF SYSTEM TIME experimental_follower_read_timestamp()
+	FROM articles`
+	getArticlesModifiers = `
   WHERE project = $1
   ORDER BY daily_views DESC
-  LIMIT %d
-  OFFSET %d`, limit, offset), nil, project)
+  LIMIT $2
+  OFFSET $3`
+	getArticlesSQL             = getArticlesSelection + getArticlesModifiers
+	getArticlesFollowerReadSQL = getArticlesSelection +
+		` AS OF SYSTEM TIME experimental_follower_read_timestamp()` +
+		getArticlesModifiers
+)
+
+func (db *DB) GetArticles(
+	ctx context.Context, project string, offset, limit int, followerRead bool,
+) ([]Article, error) {
+	stmt := db.getArticles
+	if followerRead {
+		stmt = db.getArticlesFollowerRead
+	}
+	rows, err := db.connPool.QueryEx(ctx, stmt.Name, nil, project, limit, offset)
 	if err != nil {
 		return nil, err
 	}
