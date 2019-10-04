@@ -1,0 +1,45 @@
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: wikifeedia-crawl
+spec:
+  # Disallow concurrent jobs. We impose a maximum runtime below.
+  concurrencyPolicy: Forbid
+  # Run hourly.
+  schedule: "0 * * * *"
+  # Must start within 1 minute of expected time, or we'll skip
+  # to the next tick.
+  startingDeadlineSeconds: 60
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: wikifeedia
+        spec:
+          containers:
+            - name: wikifeedia-crawl
+              image: gcr.io/cockroach-dev-inf/cockroachlabs/wikifeedia:master-ajwerner
+              imagePullPolicy: Always
+              # Guaranteed resources.
+              resources:
+                requests:
+                  cpu: 1
+                  memory: 2Gi
+                limits:
+                  cpu: 1
+                  memory: 2Gi
+              envFrom:
+                - secretRef:
+                    name: wikifeedia-password
+              args: ["wikifeedia", "--pgurl" , "postgres://wikifeedia:${PASSWORD}@aws-us-east-1.wikifeedia-aws.cockroachlabs.cloud:26257?sslmode=verify-full&sslrootcert=/cert/wikifeedia-aws-ca.crt", "crawl"]
+              volumeMounts:
+                - mountPath: "/cert"
+                  name: cert
+          restartPolicy: Never
+          volumes:
+            - name: cert
+              secret:
+                secretName: wikifeedia-client-cert
+      backoffLimit: 1
+

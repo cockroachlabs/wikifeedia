@@ -1,0 +1,36 @@
+# This service object creates a virtual IP address within the cluster
+# that will steer traffic to pods that match a label selector.
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    # EDITME This line controls which protocol the load balancer will
+    # use when connecting to the app. This default app supports HTTP2.
+    # Other valid choices are HTTPS or to delete this line for HTTP.
+    cloud.google.com/app-protocols: '{"https":"HTTP2"}'
+  labels:
+    app: wikifeedia
+  name: wikifeedia
+spec:
+  externalTrafficPolicy: Cluster
+  ports:
+    # EDITME Each Service object generates a virtual IP address, so you'll
+    # generally use the default port for the service.
+    - name: https
+      port: 443
+      protocol: TCP
+      # EDITME This should be the containerPort.name value.
+      targetPort: https
+  # This label selector matches against pod labels. Image a case where
+  # you have three replicas with a "branch:stable" label and one  with a
+  # "branch:canary". Since all four would have an "app:myapp" label, the
+  # service will steer traffic between all instances. This requires, of
+  # course, that the backend can operate in a mixed-version deployment.
+  selector:
+    app: wikifeedia
+    # This is also a "NodePort" service (as opposed to "LoadBalancer"),
+    # which makes every machine in the k8s cluster forward network
+    # traffic from an arbitrarily-chosen port number on the host
+    # machine's "real" IP address. This is ultimately how the Ingress
+    # controller routes HTTP requests into the cluster.
+  type: NodePort

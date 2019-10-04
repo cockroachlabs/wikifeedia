@@ -1,0 +1,85 @@
+# This deployment object defines a pod template and a replica count.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  # What's with labels vs names?  The name is how the configuration
+  # object is identified by k8s.  The labels are arbitrary key-value
+  # pairs, which are used for categorization and selection.  Often,
+  # there will be both "app" and "env" keys, or "canary: true" labels.
+  labels:
+    app: wikifeedia
+  name: wikifeedia
+spec:
+  # This combination of replicas and selector is really saying
+  # "ensure that there are this many pods that match the given label selector".
+  replicas: 1
+  selector:
+    matchLabels:
+      app: wikifeedia
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: wikifeedia
+    spec:
+      containers:
+        - image: gcr.io/cockroach-dev-inf/cockroachlabs/wikifeedia:master-ajwerner
+          imagePullPolicy: Always
+          name: wikifeedia
+          ports:
+            - containerPort: 8080
+              protocol: TCP
+              # EDITME This name is arbitrary and should be used instead
+              # of port numbers when referring to the pod. The general
+              # rule is to use the protocol name as the port name.
+              name: https
+          # Liveness determine if the container should be terminated.
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /healthz
+              # EDITME Ensure this port name and the scheme match what
+              # your your app is doing.
+              port: https
+              scheme: HTTPS
+          # Readiness controls when the container is available to serve
+          # network requests. For many services, this will be the same
+          # query as above. If the backend needs to establish many
+          # remote connections or transfer data before actually being
+          # able to serve, the use of distinct liveness and readiness
+          # probes allows the "failure to launch" case to be detected.
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /healthz
+              # EDITME Ensure this port name and the scheme match what
+              # your your app is doing.
+              port: https
+              scheme: HTTPS
+          resources:
+            # The requested amount is used to place the pod on a
+            # particular machine.
+            #
+            # EDITME: These values are often determined empirically.
+            requests:
+              cpu: "500m"
+              memory: "1024Mi"
+            limits:
+              cpu: "500m"
+              memory: "1024Mi"
+          envFrom:
+            - secretRef:
+                name: wikifeedia-password
+          args: ["wikifeedia", "--pgurl" , "postgres://wikifeedia:${PASSWORD}@aws-us-east-1.wikifeedia-aws.cockroachlabs.cloud:26257?sslmode=verify-full&sslrootcert=/cert/wikifeedia-aws-ca.crt", "server"]
+          volumeMounts:
+            - mountPath: "/cert"
+              name: cert
+      volumes:
+        - name: cert
+          secret:
+            secretName: wikifeedia-client-cert
+      terminationGracePeriodSeconds: 30

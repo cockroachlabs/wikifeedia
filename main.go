@@ -25,6 +25,8 @@ import (
 )
 
 func main() {
+	var pgURL string
+	var expandedPgURL string
 	app := cli.NewApp()
 	app.Name = "wikifeedia"
 	app.Usage = "runs one of the main actions"
@@ -34,17 +36,21 @@ func main() {
 	}
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
-			Name:  "pgurl",
-			Value: "pgurl://root@localhost:26257?sslmode=disable",
+			Name:        "pgurl",
+			Value:       "pgurl://root@localhost:26257?sslmode=disable",
+			Destination: &pgURL,
 		},
 	}
+	app.Before = cli.BeforeFunc(func(ctx *cli.Context) error {
+		expandedPgURL = os.ExpandEnv(pgURL)
+		return nil
+	})
 	app.Commands = []cli.Command{
 		{
 			Name: "setup",
 			Action: func(c *cli.Context) error {
-				pgurl := c.GlobalString("pgurl")
-				fmt.Println("Setting up database at", pgurl)
-				_, err := db.New(pgurl)
+				fmt.Println("Setting up database at", pgURL)
+				_, err := db.New(expandedPgURL)
 				return err
 			},
 		},
@@ -52,9 +58,8 @@ func main() {
 			Name:        "crawl",
 			Description: "Update the set of articles one time",
 			Action: func(c *cli.Context) error {
-				pgurl := c.GlobalString("pgurl")
-				fmt.Println("Setting up database at", pgurl)
-				conn, err := db.New(pgurl)
+				fmt.Println("Setting up database at", pgURL)
+				conn, err := db.New(expandedPgURL)
 				if err != nil {
 					return err
 				}
@@ -67,9 +72,8 @@ func main() {
 			Name:        "server",
 			Description: "Run the server",
 			Action: func(c *cli.Context) error {
-				pgurl := c.GlobalString("pgurl")
-				fmt.Println("Setting up database at", pgurl)
-				conn, err := db.New(pgurl)
+				fmt.Println("Setting up database at", pgURL)
+				conn, err := db.New(expandedPgURL)
 				if err != nil {
 					return err
 				}

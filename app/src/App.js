@@ -134,24 +134,24 @@ function FeedApp({ project }) {
 }
 
 const languages = [
-  "en",
-	"fr",
-	"es",
-	"de",
-	"ru",
-	"ja",
-	"nl",
-	"it",
-	"sv",
-	"pl",
-	"vi",
-	"pt",
-	"ar",
-	"zh",
-  "uk",
-  "ro",
-  "bg",
-  "th"
+    "en",
+    "fr",
+    "es",
+    "de",
+    "ru",
+    "ja",
+    "nl",
+    "it",
+    "sv",
+    "pl",
+    "vi",
+    "pt",
+    "ar",
+    "zh",
+    "uk",
+    "ro",
+    "bg",
+    "th"
 ]
 
 
