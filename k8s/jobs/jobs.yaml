@@ -31,8 +31,8 @@ spec:
                   memory: 2Gi
               envFrom:
                 - secretRef:
-                    name: wikifeedia-password
-              args: ["wikifeedia", "--pgurl" , "postgres://wikifeedia:${PASSWORD}@aws-us-east-1.wikifeedia-aws.cockroachlabs.cloud:26257?sslmode=verify-full&sslrootcert=/cert/wikifeedia-aws-ca.crt", "crawl"]
+                    name: wikifeedia-pgurl
+              args: ["wikifeedia", "--pgurl" , "${PGURL}", "crawl"]
               volumeMounts:
                 - mountPath: "/cert"
                   name: cert
