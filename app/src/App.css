@@ -121,3 +121,7 @@
   max-width: 500px;
   margin: auto;
 }
+
+.LangTab-selected {
+  font-weight: bold;
+}
