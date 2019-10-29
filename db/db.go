@@ -85,7 +85,8 @@ func New(pgurl string) (*DB, error) {
 }
 
 const (
-	getArticlesSelection = `SELECT
+	getArticlesSelection = `SELECT * FROM (
+  SELECT
     project,
 		article,
 		title,
@@ -94,12 +95,12 @@ const (
 		abstract,
 		article_url,
 		daily_views
-	FROM articles`
-	getArticlesModifiers = `
+	FROM articles
   WHERE project = $1
   ORDER BY daily_views DESC
-  LIMIT $2
-  OFFSET $3`
+  LIMIT ($2 + $3)
+)`
+	getArticlesModifiers       = `ORDER BY daily_views DESC OFFSET $3`
 	getArticlesSQL             = getArticlesSelection + getArticlesModifiers
 	getArticlesFollowerReadSQL = getArticlesSelection +
 		` AS OF SYSTEM TIME experimental_follower_read_timestamp()` +

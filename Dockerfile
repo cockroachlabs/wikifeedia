@@ -4,7 +4,8 @@ WORKDIR $workdir
 COPY . .
 
 RUN apt-get update
-RUN apt-get install -y npm nodejs
+RUN apt-get install -y nodejs
+RUN curl https://www.npmjs.com/install.sh | sh
 RUN npm install -g yarn
 WORKDIR /build/app
 RUN yarn

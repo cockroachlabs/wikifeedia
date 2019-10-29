@@ -33,7 +33,6 @@ export function Feed({ project }) {
     },
     fetchPolicy: "cache-and-network"
   });
-  console.log(loading, err, data, fetchMore);
   const articles = (data !== undefined) ? data.articles || [] : [];
   return (
     <FeedContainer
