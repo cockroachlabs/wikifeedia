@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/NYTimes/gziphandler"
 	"github.com/cockroachlabs/wikifeedia/db"
@@ -67,6 +68,10 @@ func (s *Server) getArticles(
 	if !wikipedia.IsProject(args.Project) {
 		return nil, fmt.Errorf("%s is not a valid project")
 	}
+	start := time.Now()
+	defer func() {
+		log.Printf("%v?limit=%v&offset=%v&follower_read=%v - %v", args.Project, args.Limit, args.Offset, *args.FollowerRead, time.Since(start))
+	}()
 	return s.db.GetArticles(ctx, args.Project, int(args.Offset), int(args.Limit),
 		args.FollowerRead != nil && *args.FollowerRead)
 }
