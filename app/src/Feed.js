@@ -5,16 +5,24 @@ import gql from 'graphql-tag';
 import { useQuery } from '@apollo/react-hooks';
 
 const GET_FEED = gql`
-query Feed($project: String!, $offset: Int, $limit: Int, $followerRead: Boolean) {
-  articles(project: $project, offset: $offset, limit: $limit, followerRead: $followerRead) {
-    project
-    abstract
-    article
-    articleURL
-    dailyViews
-    imageURL
-    thumbnailURL
-    title
+query Feed(
+  $project: String!, $offset: Int, $limit: Int, $followerRead: Boolean, $asOf: String
+) {
+  articles(
+    project: $project, offset: $offset, limit: $limit, 
+    followerRead: $followerRead, asOf: $asOf
+  ) {
+    asOf
+    articles {
+      project
+      abstract
+      article
+      articleURL
+      dailyViews
+      imageURL
+      thumbnailURL
+      title
+    }
   }
 }`;
 
@@ -33,7 +41,7 @@ export function Feed({ project }) {
     },
     fetchPolicy: "cache-and-network"
   });
-  const articles = (data !== undefined) ? data.articles || [] : [];
+  const articles = (data !== undefined) ? data : {articles: {articles: []}}
   return (
     <FeedContainer
       key="feed"
@@ -43,13 +51,22 @@ export function Feed({ project }) {
       onLoadMore={() =>
         fetchMore({
           variables: {
-            offset: articles.length
+            offset: articles.articles.articles.length,
+            asOf: articles.articles.asOf,
           },
           updateQuery: (prev, { fetchMoreResult }) => {
             if (!fetchMoreResult) return prev;
-            return Object.assign({}, prev, {
-              articles: [...prev.articles, ...fetchMoreResult.articles]
-            });
+            const prevArticles = prev.articles.articles;
+            const newArticles = fetchMoreResult.articles.articles;
+            const newAsOf = fetchMoreResult.articles.asOf
+            return {
+              articles: {
+                  asOf: newAsOf,
+                  articles: [...prevArticles, ...newArticles],
+                  __typename: prev.articles.__typename,
+              },
+              __typename: prev.__typename,
+            }
           }
         })
       }
@@ -62,7 +79,7 @@ class FeedContainer extends React.Component {
   render() {
     if (this.props.error) return `Error! ${this.props.error.message}`;
     if (!this.props.articles && this.props.loading) return <p>Loading....</p>;
-    const articles = this.props.articles || [];
+    const articles = this.props.articles.articles.articles;
     return (
       <div className="Articles">
         {articles.map(({

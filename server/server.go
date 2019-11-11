@@ -56,6 +56,11 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	s.mux.ServeHTTP(w, r)
 }
 
+type ArticlesResponse struct {
+	Articles []db.Article `json:"articles"`
+	AsOf     string       `json:"as_of"`
+}
+
 func (s *Server) getArticles(
 	ctx context.Context,
 	args struct {
@@ -63,17 +68,32 @@ func (s *Server) getArticles(
 		Offset       int32
 		Limit        int32
 		FollowerRead *bool
+		AsOf         *string
 	},
-) ([]db.Article, error) {
+) (*ArticlesResponse, error) {
+	fmt.Println("h")
+	start := time.Now()
+	var asOf string
+	if args.AsOf != nil {
+		asOf = *args.AsOf
+	}
+	defer func() {
+		log.Printf("%v?limit=%v&offset=%v&follower_read=%v&as_of=%v - %v",
+			args.Project, args.Limit, args.Offset, *args.FollowerRead,
+			time.Since(start), asOf)
+	}()
 	if !wikipedia.IsProject(args.Project) {
 		return nil, fmt.Errorf("%s is not a valid project")
 	}
-	start := time.Now()
-	defer func() {
-		log.Printf("%v?limit=%v&offset=%v&follower_read=%v - %v", args.Project, args.Limit, args.Offset, *args.FollowerRead, time.Since(start))
-	}()
-	return s.db.GetArticles(ctx, args.Project, int(args.Offset), int(args.Limit),
-		args.FollowerRead != nil && *args.FollowerRead)
+	articles, newAsOf, err := s.db.GetArticles(ctx, args.Project, int(args.Offset), int(args.Limit),
+		args.FollowerRead != nil && *args.FollowerRead, asOf)
+	if err != nil {
+		return nil, err
+	}
+	return &ArticlesResponse{
+		AsOf:     newAsOf,
+		Articles: articles,
+	}, nil
 }
 
 // schema builds the graphql schema.
@@ -81,6 +101,7 @@ func (s *Server) schema() *graphql.Schema {
 	builder := schemabuilder.NewSchema()
 	obj := builder.Object("Article", db.Article{})
 	obj.Key("article")
+	builder.Object("ArticlesResponse", ArticlesResponse{})
 	q := builder.Query()
 	q.FieldFunc("articles", s.getArticles)
 	mut := builder.Mutation()

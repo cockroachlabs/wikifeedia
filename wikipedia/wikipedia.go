@@ -1,3 +1,4 @@
+// Package wikipedia is a simple client driver for the wikipedia HTTP api.
 package wikipedia
 
 import (
@@ -139,7 +140,6 @@ type ArticleSummary struct {
 }
 
 func (c *Client) GetArticle(ctx context.Context, project, articleName string) (Article, error) {
-	fmt.Println(articleName)
 	summary, err := c.GetArticleSummary(ctx, project, articleName)
 	if err != nil {
 		return Article{}, err
@@ -174,6 +174,8 @@ func (c *Client) GetArticleSummary(
 	if err := json.NewDecoder(resp.Body).Decode(&summary); err != nil {
 		return ArticleSummary{}, err
 	}
+	// TODO(ajwerner): clarify the meaning of this field.
+	summary.Timestamp = time.Now().UTC()
 	return summary, nil
 }
 
@@ -206,7 +208,7 @@ func (c *Client) FetchTopArticles(ctx context.Context, project string) (*TopPage
 	if err := c.limiter.Wait(ctx); err != nil {
 		return nil, err
 	}
-	now := time.Now().Add(-48 * time.Hour)
+	now := time.Now().UTC().Add(-24 * time.Hour).Truncate(24 * time.Hour)
 	url := fmt.Sprintf(wikimediaURL+"/metrics/pageviews/top/%s.wikipedia.org/all-access/%04d/%02d/%02d",
 		project, now.Year(), int(now.Month()), now.Day())
 	resp, err := c.cli.Get(url)
