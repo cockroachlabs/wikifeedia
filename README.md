@@ -13,4 +13,6 @@ same `wikifeedia` binary. These components are a simple go application. The craw
 
 The server provides a minimal graphql schema to retrieve the articles and serves the static assets. GraphQL was chosen over a simple HTTP endpoint mostly just as a way for the author to experiment with Apollo in the client.
 
+The backend is deployed on [k8s](./k8s) with servers running in multiple regions and a crawler run as a cron job in just one.
+
 The web [app](./app) uses React and Apollo.
