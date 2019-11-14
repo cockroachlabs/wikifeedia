@@ -39,7 +39,7 @@ func New(conn *db.DB) *Server {
 	s.mux.Handle("/graphiql/", http.StripPrefix("/graphiql/", graphiql.Handler()))
 	staticHandler := gziphandler.GzipHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Vary", "Accept-Encoding")
-		w.Header().Set("Cache-Control", "public, max-age=600")
+		w.Header().Set("Cache-Control", "public, max-age=3600")
 		fs.ServeHTTP(w, r)
 	}))
 	s.mux.Handle("/", staticHandler)
