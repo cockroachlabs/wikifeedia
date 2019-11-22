@@ -33,8 +33,14 @@ func New(conn *db.DB) *Server {
 
 	introspection.AddIntrospectionToSchema(schema)
 	fs := http.FileServer(Assets)
-	s.mux.Handle("/graphqlhttp",
-		gziphandler.GzipHandler(graphql.HTTPHandler(schema)))
+	graphqlHandler := graphql.HTTPHandler(schema)
+	s.mux.Handle("/graphqlhttp", gziphandler.GzipHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, DELETE")
+		w.Header().Set("Access-Control-Max-Age", "3600")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Accept, X-Requested-With")
+		graphqlHandler.ServeHTTP(w, r)
+	})))
 	s.mux.Handle("/graphql", graphql.Handler(schema))
 	s.mux.Handle("/graphiql/", http.StripPrefix("/graphiql/", graphiql.Handler()))
 	staticHandler := gziphandler.GzipHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
