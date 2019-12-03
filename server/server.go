@@ -77,7 +77,6 @@ func (s *Server) getArticles(
 		AsOf         *string
 	},
 ) (*ArticlesResponse, error) {
-	fmt.Println("h")
 	start := time.Now()
 	var asOf string
 	if args.AsOf != nil {
@@ -86,7 +85,7 @@ func (s *Server) getArticles(
 	defer func() {
 		log.Printf("%v?limit=%v&offset=%v&follower_read=%v&as_of=%v - %v",
 			args.Project, args.Limit, args.Offset, *args.FollowerRead,
-			time.Since(start), asOf)
+			asOf, time.Since(start))
 	}()
 	if !wikipedia.IsProject(args.Project) {
 		return nil, fmt.Errorf("%s is not a valid project")

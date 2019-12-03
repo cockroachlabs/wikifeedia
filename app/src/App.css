@@ -14,12 +14,11 @@
   flex-grow: 1;
   flex-wrap: wrap;
   margin: auto;
-  max-width: 1000px;
 }
 
 .Article {
-  max-width: 900px;
-  min-width: 100px;
+  max-width: 1080px;
+  min-width: 120px;
   margin: auto;
   min-height: 300px;
   border-color: #a7d7f9;

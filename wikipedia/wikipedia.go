@@ -237,7 +237,9 @@ func (c *Client) FetchTopArticles(ctx context.Context, project string) (*TopPage
 func shouldFilter(articleName string) bool {
 	return strings.HasPrefix(articleName, "Special:") ||
 		articleName == "Main_Page" ||
-		strings.HasPrefix(articleName, "Wikipedia:")
+		strings.HasPrefix(articleName, "Wikipedia:") ||
+		strings.Contains(articleName, "Pagina principale") ||
+		strings.Contains(articleName, "Wikipédia:Accueil principal")
 }
 
 func filterSpecial(top []TopPageviewsArticle) (filtered []TopPageviewsArticle) {
