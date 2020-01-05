@@ -121,6 +121,15 @@
   margin: auto;
 }
 
-.LangTab-selected {
+.LangTab {
+  cursor: default;
+}
+
+.LangTab:hover {
   font-weight: bold;
+  text-decoration: underline;
+}
+
+.LangTab-selected {
+  font-weight: bolder;
 }
