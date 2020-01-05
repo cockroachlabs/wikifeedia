@@ -20,7 +20,7 @@ const client = new ApolloClient({
 
 const languages = [
   "en", "fr", "es", "de", "ru", "ja", "nl", "it", "sv", "pl", "vi", "pt", "ar",
-  "zh", "uk", "ro", "bg", "th"
+  "zh", "uk", "ro", "bg", "th", "fa"
 ];
 
 function langTabs(project, setProject) {

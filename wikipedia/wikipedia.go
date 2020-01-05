@@ -32,6 +32,7 @@ var Projects = []string{
 	"ro",
 	"bg",
 	"th",
+	"fa",
 }
 
 const wikimediaURL = "https://wikimedia.org/api/rest_v1"
