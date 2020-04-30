@@ -81,7 +81,12 @@ func (c *Crawler) fetchNewTopArticles(ctx context.Context, project string) error
 	writeGroup, ctx := errgroup.WithContext(ctx)
 	sem := make(chan struct{}, writeConcurrency)
 	for a := range articleChan {
+		a := a
 		if a.a.Summary.Extract == "" || len(a.a.Media) == 0 {
+			continue
+		}
+		imageURL, ok := a.a.GetImageURL()
+		if !ok {
 			continue
 		}
 		select {
@@ -92,26 +97,24 @@ func (c *Crawler) fetchNewTopArticles(ctx context.Context, project string) error
 
 		writeGroup.Go(func() error {
 			defer func() { <-sem }()
-			dba := makeArticle(project, a.ta.Views, a.a)
+			dba := makeArticle(project, a.ta.Views, a.a, imageURL)
 			return c.db.UpsertArticle(ctx, dba)
 		})
 	}
 	return writeGroup.Wait()
 }
 
-func makeArticle(project string, pageViews int, a *wikipedia.Article) db.Article {
+func makeArticle(project string, pageViews int, a *wikipedia.Article, imageURL string) db.Article {
 	dba := db.Article{
-		Project:    project,
-		Article:    a.Article,
-		Title:      a.Summary.Titles.Normalized,
-		Abstract:   a.Summary.Extract,
-		DailyViews: pageViews,
-		ArticleURL: a.Summary.ContentURLs.Desktop.Page,
-		Retrieved:  a.Summary.Timestamp,
-	}
-	if len(a.Media) > 0 {
-		dba.ImageURL = a.Media[0].Original.Source
-		dba.ThumbnailURL = a.Media[0].Thumbnail.Source
+		Project:      project,
+		Article:      a.Article,
+		Title:        a.Summary.Titles.Normalized,
+		Abstract:     a.Summary.Extract,
+		DailyViews:   pageViews,
+		ArticleURL:   a.Summary.ContentURLs.Desktop.Page,
+		Retrieved:    a.Summary.Timestamp,
+		ImageURL:     imageURL,
+		ThumbnailURL: imageURL,
 	}
 	return dba
 }

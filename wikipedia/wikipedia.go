@@ -97,6 +97,26 @@ type Article struct {
 	Media   []ArticleMediaItem
 }
 
+func (a *Article) GetImageURL() (string, bool) {
+	if len(a.Media) == 0 {
+		return "", false
+	}
+	for _, m := range a.Media {
+		if m.Type != "image" {
+			continue
+		}
+		if m.Original.Source != "" {
+			return m.Original.Source, true
+		}
+		for _, s := range m.SrcSet {
+			if s.Src != "" {
+				return "https:" + s.Src, true
+			}
+		}
+	}
+	return "", false
+}
+
 type ArticleTitles struct {
 	Canonical  string `json:"canonical"`
 	Normalized string `json:"normalized"`
@@ -104,12 +124,20 @@ type ArticleTitles struct {
 }
 
 type ArticleMediaItem struct {
-	SectionID int           `json:"section_id"`
-	Type      string        `json:"type"`
-	Titles    ArticleTitles `json:"titles"`
-	Thumbnail ImageMetadata `json:"thumbnail"`
-	Original  ImageMetadata `json:"original"`
+	SectionID int              `json:"section_id"`
+	Type      string           `json:"type"`
+	Titles    ArticleTitles    `json:"titles"`
+	Thumbnail ImageMetadata    `json:"thumbnail"`
+	Original  ImageMetadata    `json:"original"`
+	SrcSet    []SrcSetMetadata `json:"srcset"`
 }
+
+type SrcSetMetadata struct {
+	Src   string `json:"src"`
+	Scale Scale  `json:"scale"`
+}
+
+type Scale string
 
 type ImageMetadata struct {
 	Source string `json:"source"`
@@ -186,7 +214,7 @@ func (c *Client) GetArticleMedia(
 	if err := c.limiter.Wait(ctx); err != nil {
 		return nil, err
 	}
-	url := fmt.Sprintf(apiURL(project) + "/page/media/" + articleName)
+	url := fmt.Sprintf(apiURL(project) + "/page/media-list/" + articleName)
 	resp, err := c.cli.Get(url)
 	if err != nil {
 		return nil, err
