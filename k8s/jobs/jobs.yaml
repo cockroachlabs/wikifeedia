@@ -19,7 +19,7 @@ spec:
         spec:
           containers:
             - name: wikifeedia-crawl
-              image: gcr.io/cockroach-dev-inf/cockroachlabs/wikifeedia:master-ajwerner
+              image: gcr.io/cockroach-dev-inf/cockroachlabs/wikifeedia:update-me
               imagePullPolicy: Always
               # Guaranteed resources.
               resources:
@@ -32,7 +32,10 @@ spec:
               envFrom:
                 - secretRef:
                     name: wikifeedia-pgurl
-              args: ["wikifeedia", "--pgurl" , "${PGURL}", "crawl"]
+              command:
+                - "/bin/sh"
+                - "-c"
+              args: "wikifeedia --pgurl ${PGURL} crawl && curl https://nosnch.in/2cc5d9500a"
               volumeMounts:
                 - mountPath: "/cert"
                   name: cert
